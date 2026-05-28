@@ -1,91 +1,190 @@
+<div align="center">
+
 # 🎮 Screenshot to Game Classifier
 
-![Python](https://img.shields.io/badge/Python-3.13-3776AB?logo=python&logoColor=white)
-![PyTorch](https://img.shields.io/badge/PyTorch-ResNet--50-EE4C2C?logo=pytorch&logoColor=white)
-![Gradio](https://img.shields.io/badge/Demo-Gradio-F97316?logo=gradio&logoColor=white)
-![Accuracy](https://img.shields.io/badge/test%20accuracy-99.53%25-success)
-![License](https://img.shields.io/badge/license-MIT-green)
+### Recognize a game from a clean screenshot — or even from a phone photo of someone else's screen.
 
-Identify which of **17 popular games** a screenshot belongs to — on direct screenshots **and** on photos of a screen (the system detects the screen, corrects its perspective, then classifies).
+<br/>
 
-Machine Learning 2 Final Project — by **Yizhuo Li**, **Elaine Wang**, **Cecilia Hua**, and **Cassie Li**.
+![Python](https://img.shields.io/badge/Python-3.13-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![PyTorch](https://img.shields.io/badge/PyTorch-ResNet--50-EE4C2C?style=for-the-badge&logo=pytorch&logoColor=white)
+![Gradio](https://img.shields.io/badge/Demo-Gradio-F97316?style=for-the-badge&logo=gradio&logoColor=white)
+![Mobile SAM](https://img.shields.io/badge/Screen%20Detection-Mobile%20SAM-7C3AED?style=for-the-badge)
+<br/>
+![Classes](https://img.shields.io/badge/classes-17-22D3EE?style=for-the-badge)
+![Dataset](https://img.shields.io/badge/dataset-17%2C000%20frames-0EA5E9?style=for-the-badge)
+![Test Accuracy](https://img.shields.io/badge/test%20accuracy-99.53%25-22C55E?style=for-the-badge)
+![License](https://img.shields.io/badge/license-MIT-9CA3AF?style=for-the-badge)
+
+<br/>
 
 ![Demo](assets/demo.png)
 
-> *Photo-of-screen mode — a phone photo of a screen running Fortnite: the app detects the screen (green corners), corrects the perspective, and classifies it as **Fortnite (99.5%)**.*
+<sub><i>Photo-of-screen mode — a phone photo of a screen running Fortnite: the system detects the screen (green corners), corrects the perspective, and classifies it as <b>Fortnite (99.5%)</b>.</i></sub>
 
-<details>
-<summary><b>Table of Contents</b></summary>
+<br/>
 
-- [Why This Project Matters](#why-this-project-matters)
-- [At a Glance](#at-a-glance)
-- [Presentation Highlights](#presentation-highlights)
-- [Features](#features)
-- [Architecture](#architecture)
-- [Methodology](#methodology)
-- [Results](#results)
-- [Project Structure](#project-structure)
-- [Getting Started](#getting-started)
-- [Usage](#usage)
-- [Contributing](#contributing)
-- [Authors](#authors)
-- [Acknowledgments](#acknowledgments)
-- [License](#license)
+**Machine Learning 2 · Final Project**
+by **Yizhuo Li** · **Elaine Wang** · **Cecilia Hua** · **Cassie Li**
 
-</details>
+</div>
 
 ---
 
-# 📌 Overview
+## 📖 Table of Contents
 
-## Why This Project Matters
+<table>
+<tr>
+<td valign="top" width="33%">
 
-Most image-classification demos stop at clean inputs. Our project targets the
-more realistic situation: you see a game on someone else's phone or monitor,
-take a photo, and still want the system to tell you what game it is.
+**Story**
+- [The Problem](#-the-problem)
+- [At a Glance](#-at-a-glance)
+- [Supported Games](#-supported-games)
+- [System Overview](#-system-overview)
 
-That makes the task more than "classify a screenshot". The full system must:
+</td>
+<td valign="top" width="33%">
 
-1. accept either a screenshot or a real-world photo of a screen
-2. detect the screen region when the input is a photo
-3. correct the perspective of that screen
-4. classify the corrected image with high confidence
+**Method**
+- [Data Pipeline](#-data-pipeline)
+- [Key Design: Letterbox Geometry](#-the-key-design-letterbox-geometry)
+- [Model & Training](#-model--training-strategy)
+- [Photo-of-Screen Pipeline](#-photo-of-screen-pipeline)
 
-## At a Glance
+</td>
+<td valign="top" width="33%">
 
-| Item | Summary |
-|------|---------|
-| Project type | End-to-end computer vision system |
-| Inputs | Direct screenshot or photo of a phone / monitor screen |
-| Output | Top-3 predicted games with confidence |
-| Final class count | 17 games |
-| Core model | ResNet-50 fine-tuned on ImageNet-pretrained weights |
-| Key CV step | Screen detection + perspective correction |
-| Main result | **99.53%** test accuracy |
-| Demo | Gradio interface with screenshot mode and photo-of-screen mode |
+**Evidence & Use**
+- [Results](#-results)
+- [Live Demo](#-live-demo)
+- [Quickstart](#%EF%B8%8F-quickstart)
+- [Team · Limitations · Future Work](#-team--contributions)
 
-## Presentation Highlights
+</td>
+</tr>
+</table>
 
-If you are opening this repository during a presentation, the fastest path is:
+---
 
-1. Look at the hero image above to understand the final demo experience.
-2. Skim **At a Glance** for the project scope and headline result.
-3. Jump to **Architecture** for the full pipeline.
-4. Jump to **Results** for metrics and visual evaluation.
-5. Run `python demo/app.py` for the live demo.
+## 🎯 The Problem
 
-## Features
+> [!NOTE]
+> Most image classification demos stop at clean inputs. The real world is messier — and that messiness is exactly what makes this project interesting.
 
-- 🖼️ **Screenshot classification** — upload a frame, get Top-3 predictions with confidence.
-- 📷 **Photo-of-screen mode** — photograph a phone/monitor; the screen is auto-detected and perspective-corrected before classification (the webcam auto-starts in this mode).
-- 🧹 **Reproducible data pipeline** — YouTube collection, perceptual-hash de-duplication, quality cleaning, reporting, and per-image provenance manifests.
-- 🎯 **99.53% test accuracy** across 17 game classes.
+Imagine seeing someone playing a game across the room. You like the look of it, but you have no idea what it is. You take a quick phone photo of their screen — at an angle, slightly blurry, with glare — and you want a system that can still tell you: *that's Genshin Impact*, or *that's Valorant*.
 
-## Architecture
+That single user story sets the entire problem definition for this project.
 
-Three sub-packages coordinated by a single shared `config.py` contract.
+<table>
+<tr>
+<td align="center" width="50%">
 
-### Components
+### 🖼️ Direct Screenshot
+*The easy case*
+
+A clean frame straight from the game.
+Crisp HUD, perfect framing, full resolution.
+
+**Goal:** classify accurately and fast.
+
+</td>
+<td align="center" width="50%">
+
+### 📷 Photo of a Screen
+*The hard, realistic case*
+
+A phone photo of a monitor or phone screen.
+Perspective distortion · glare · blur · background clutter.
+
+**Goal:** still classify correctly — by detecting the screen, correcting it, then classifying.
+
+</td>
+</tr>
+</table>
+
+**Why this matters for an ML project:** it forces decisions across the full stack — data design, preprocessing geometry, augmentation, model robustness, and inference-time computer vision — rather than just training a classifier on a fixed dataset.
+
+---
+
+## 🌟 At a Glance
+
+<div align="center">
+
+| 🧱 Architecture | 🗂️ Classes | 🖼️ Dataset | ✅ Test Accuracy | ⚡ Best Validation | 🕓 Training |
+|:---:|:---:|:---:|:---:|:---:|:---:|
+| ResNet-50<br/>(ImageNet→fine-tuned) | **17 games** | 17,000 frames<br/>(1,000 / class) | **99.53%** | **99.65%**<br/>(epoch 4) | Saturated in<br/>~4 epochs |
+
+</div>
+
+<table>
+<tr>
+<td valign="top" width="50%">
+
+### ✨ What this project delivers
+
+- 🖼️ **Screenshot classification** with Top-3 predictions and confidence.
+- 📷 **Photo-of-screen mode** — phone-camera input, auto screen detection, perspective correction, then classification.
+- 🧹 **Reproducible data pipeline** — YouTube collection, perceptual-hash de-duplication, quality cleaning, full provenance.
+- 🎯 **99.53% test accuracy** across 17 game classes with per-class precision/recall mostly **98–100%**.
+- 🧩 **Clean modular repo** — `data/`, `model/`, `demo/`, all coordinated by one `config.py`.
+
+</td>
+<td valign="top" width="50%">
+
+### 🧰 Tech stack
+
+- **Language:** Python 3.13
+- **Model:** PyTorch · torchvision · ResNet-50
+- **Computer vision:** Mobile SAM · OpenCV
+- **Data:** yt-dlp · imagehash · HuggingFace `datasets`
+- **Interface:** Gradio (screenshot + webcam modes)
+- **Training:** stratified 80/10/10, early-stopped, GPU-accelerated
+
+</td>
+</tr>
+</table>
+
+---
+
+## 🎮 Supported Games
+
+A balanced set of **17 classes × 1,000 images each** — a mix of classic and current titles, covering different genres and visual styles.
+
+<table>
+<tr>
+<td align="center" width="20%">👾<br/><b>Among Us</b></td>
+<td align="center" width="20%">🎯<br/><b>Apex Legends</b></td>
+<td align="center" width="20%">🤖<br/><b>ARC Raiders</b></td>
+<td align="center" width="20%">🔫<br/><b>Counter-Strike 2</b></td>
+<td align="center" width="20%">⚡<br/><b>Fortnite</b></td>
+</tr>
+<tr>
+<td align="center">🏎️<br/><b>Forza Horizon</b></td>
+<td align="center">🔥<br/><b>Free Fire</b></td>
+<td align="center">✨<br/><b>Genshin Impact</b></td>
+<td align="center">⚔️<br/><b>God of War</b></td>
+<td align="center">🗡️<br/><b>League of Legends</b></td>
+</tr>
+<tr>
+<td align="center">🦸<br/><b>Marvel Rivals</b></td>
+<td align="center">🧱<br/><b>Minecraft</b></td>
+<td align="center">🎮<br/><b>Roblox</b></td>
+<td align="center">🚗<br/><b>Rocket League</b></td>
+<td align="center">🌊<br/><b>Subnautica 2</b></td>
+</tr>
+<tr>
+<td align="center">🌍<br/><b>Terraria</b></td>
+<td align="center">💥<br/><b>Valorant</b></td>
+<td align="center" colspan="3"><sub>Mix of HuggingFace baseline (10 classic) + self-collected YouTube (10 newer); 3 overlapping titles de-duplicated.</sub></td>
+</tr>
+</table>
+
+---
+
+## 🏗️ System Overview
+
+The project is intentionally split into three sub-packages that all share one config contract. The same `LetterboxResize` transform is used in training, evaluation, and the demo so geometry is consistent everywhere.
 
 ```mermaid
 flowchart TB
@@ -108,7 +207,7 @@ flowchart TB
     end
 ```
 
-### Training pipeline
+### 🔁 Training pipeline
 
 ```mermaid
 flowchart LR
@@ -119,7 +218,7 @@ flowchart LR
     E --> F["best_model.pth"]
 ```
 
-### Inference pipeline
+### 🎯 Inference pipeline
 
 ```mermaid
 flowchart LR
@@ -129,91 +228,373 @@ flowchart LR
     B -->|no| E["letterbox<br/>224×224"]
     D --> E
     E --> F["ResNet-50"]
-    F --> G["Top-3 + confidence"]
+    F --> G["Top-3<br/>+ confidence"]
 ```
 
-### Modules
+### 🧩 Modules
 
 | Module | Responsibility | Key tech |
-|--------|----------------|----------|
+|---|---|---|
 | `config.py` | Shared contract: class names, paths, hyperparameters | — |
-| `data/` | Collection, cleaning, merging, DataLoaders | yt-dlp · OpenCV · imagehash · HF `datasets` |
-| `model/` | ResNet-50 fine-tuning, training, evaluation | PyTorch · torchvision · scikit-learn |
-| `demo/` | Gradio frontend, screen detection & perspective correction | Gradio · Mobile SAM · OpenCV |
-
-**Tech stack:** Python 3.13 · PyTorch (ResNet-50) · Gradio · Mobile SAM · OpenCV · yt-dlp · HuggingFace `datasets`.
+| `data/` | Collection · cleaning · merging · DataLoaders | yt-dlp · OpenCV · imagehash · HF `datasets` |
+| `model/` | ResNet-50 fine-tuning · training · evaluation | PyTorch · torchvision · scikit-learn |
+| `demo/` | Gradio frontend · screen detection · perspective correction | Gradio · Mobile SAM · OpenCV |
 
 ---
 
-# 🧠 Methodology & Results
+## 📦 Data Pipeline
 
-## Methodology
+> [!IMPORTANT]
+> **Diversity matters more than volume.** The dataset is designed to teach the *game*, not a specific streamer, map, or video.
 
-### Problem
+We combine two complementary sources into one **17-class** dataset:
 
-Recognizing a game from one frame is easy on clean screenshots, but the real-world version is harder: people photograph a screen with a phone, at an angle, with glare and blur. We wanted a classifier that is accurate on screenshots **and** robust to photos-of-screens. That goal shaped every decision below — the data, the geometry, and the augmentations.
+<table>
+<tr>
+<td valign="top" width="50%">
 
-### 1 · Data — diversity by design, not just volume
+### 🧪 Source 1 — Public baseline
+**HuggingFace `Bingsu/Gameplay_Images`**
 
-We combine two complementary sources into a **17-class** set:
+- 10 classic games × 1,000 images
+- 640×360 PNG
+- Provides a reproducible reference point and a fair public benchmark.
 
-- **Public baseline** — HuggingFace `Bingsu/Gameplay_Images` (10 classic games), a reproducible reference.
-- **Self-collected** — 10 newer games no public dataset covers (Valorant, CS2, ARC Raiders, Marvel Rivals, Rocket League, Subnautica 2, …), sampled from real YouTube gameplay.
+</td>
+<td valign="top" width="50%">
 
-They are merged and de-duplicated (Fortnite / Minecraft / Genshin Impact overlap) and balanced to 1,000 images per class. The methodology matters more than the count — the aim is a dataset that teaches the *game*, not a streamer or a map (full details in **[DATA_COLLECTION.md](DATA_COLLECTION.md)**):
+### 🎥 Source 2 — Self-collected YouTube
+**10 newer games no public dataset covers**
 
-- **Diversity over volume** — each game is gathered from several "no-commentary, recent-version" search queries across many videos.
-- **Real frames only** — extracted from actual video (≤480p suffices for a 224px model), never thumbnails; blocked videos are skipped, not padded with low-quality fallbacks.
-- **Quality control** — 2 fps sampling, perceptual-hash de-duplication, then a cleaning pass for corrupt / too-dark / low-information frames.
-- **Provenance** — every image logs its source URL, timestamp, and hash, so the dataset is fully traceable.
+Valorant · CS2 · ARC Raiders · Marvel Rivals · Rocket League · Subnautica 2 · League of Legends · Forza Horizon · Free Fire · God of War — sampled from **real gameplay videos**, never thumbnails.
 
-### 2 · Model — geometry that matches the task
+</td>
+</tr>
+</table>
 
-- **Backbone:** ResNet-50 pretrained on ImageNet (IMAGENET1K_V2), fully fine-tuned with the head replaced for 17 classes.
-- **Letterboxing is the central design choice.** Game frames are 16:9. Squashing them to a square distorts the image; cropping discards edge HUD / minimap cues that are often the most discriminative signal. Instead we **aspect-preserve and pad to 224×224**, applying the *identical* transform in training, evaluation, and the demo. In an earlier 10-class experiment, unifying the geometry this way lifted test accuracy from 99.40% to 99.90% — geometry consistency, not a bigger model, was the win.
-- **Augmentation simulates the photo-of-screen case.** On top of standard flips and color jitter, we add perspective warps, rotation, blur, and random erasing — mimicking the artifacts of photographing a screen at an angle.
+### 🔧 How we collect, clean, and merge
 
-### 3 · Robust inference — from a phone photo to a clean frame
+```mermaid
+flowchart LR
+    Q["search queries<br/>(no commentary, recent)"] --> V["YouTube videos"]
+    V --> F["frame sampling @ 2 fps"]
+    F --> H["pHash de-duplication"]
+    H --> Q2["quality clean<br/>(corrupt / dark / low-info)"]
+    Q2 --> M["merge with HF baseline<br/>+ de-dup overlap (Fortnite, Minecraft, Genshin)"]
+    M --> B["balance to 1,000/class"]
+    B --> S["stratified 80/10/10 split"]
+```
 
-The demo accepts photos of a screen, not just screenshots. To classify those reliably it first recovers a clean frame:
+| Stage | What it does | Why it matters |
+|---|---|---|
+| **Sourcing** | Several search queries per game, favoring *"no commentary, recent version, real gameplay"* | Avoids webcam overlays, stream decorations, outdated UI |
+| **Download** | yt-dlp with Android-VR client + auto deno JS runtime | Bypasses YouTube SABR limits without manual ffmpeg muxing |
+| **Frame sampling** | 2 fps over a 0:30–12:00 window, resized to 640×360 | Skips intro/outro, prevents single-video dominance |
+| **pHash dedup** | Hamming distance < 8 → dropped | Games have many near-identical static shots |
+| **Quality clean** | Drop corrupt, low-res, too-dark/bright, low-info frames | Keeps the dataset honest |
+| **Provenance** | Manifest with source URL, timestamp, pHash | Fully traceable and reproducible |
+| **Balance & split** | 1,000 per class, stratified 80/10/10, `seed=42` | Reproducible evaluation |
 
-1. **Detect the screen** — Mobile SAM segmentation (primary), with classical-CV fallbacks (brightness percentile → Otsu → Canny edges).
-2. **Correct perspective** — the detected quadrilateral is rectified with a homography.
-3. **Classify** — the rectified frame goes through the same letterbox transform used in training.
+📄 Full methodology: **[DATA_COLLECTION.md](DATA_COLLECTION.md)**.
 
-## Results
+---
 
-| | |
-|--|--|
-| Architecture | ResNet-50, fine-tuned (17-class head) |
-| Data | 17 classes × 1,000, stratified 80/10/10 |
-| Best validation | **99.65%** (epoch 4, early-stopped) |
+## 🧠 The Key Design: Letterbox Geometry
+
+> [!TIP]
+> **The biggest accuracy gain in this project came not from a bigger model, but from making input geometry match the task.**
+
+Game frames are **16:9**. Most ML pipelines force a square. We tried three options:
+
+<table>
+<tr>
+<td align="center" width="33%">
+
+#### ❌ Square Resize
+Stretches the frame.
+
+UI elements, characters, and aspect ratios all distort.
+
+</td>
+<td align="center" width="33%">
+
+#### ❌ Center Crop
+Drops the edges.
+
+Loses HUD, minimap, and ammo counters — exactly the most discriminative cues.
+
+</td>
+<td align="center" width="33%">
+
+#### ✅ Letterbox Resize
+Aspect-preserving + center-pad to 224×224.
+
+No distortion. No lost edges. Identical geometry in training, evaluation, and demo.
+
+</td>
+</tr>
+</table>
+
+**Empirical evidence from an earlier 10-class experiment:** unifying geometry this way lifted test accuracy from **99.40% → 99.90%**. Geometry consistency, not model capacity, was the win — and the same `LetterboxResize` is reused everywhere in the codebase to guarantee it stays consistent.
+
+---
+
+## 🔬 Model & Training Strategy
+
+<table>
+<tr>
+<td valign="top" width="50%">
+
+### 🧱 Backbone
+
+- **ResNet-50** pretrained on ImageNet (`IMAGENET1K_V2`)
+- Fully fine-tuned
+- Final FC layer replaced with a 17-class head
+- Adam optimizer · lr `1e-4` · batch size 32
+- 5 epochs configured; best checkpoint saved on validation
+
+</td>
+<td valign="top" width="50%">
+
+### 🌪️ Augmentation — built for photo-of-screen
+
+On top of standard flips and color jitter, we add augmentations specifically simulating the photo-of-screen case:
+
+- `RandomAffine` (scale 0.85–1.0, translate 0.05)
+- `RandomHorizontalFlip` · `RandomRotation(±15°)`
+- `RandomPerspective(0.4)`
+- `ColorJitter` · `RandomGrayscale`
+- `GaussianBlur` · `RandomErasing`
+
+These mimic tilt, blur, glare, and occlusion at training time.
+
+</td>
+</tr>
+</table>
+
+> [!NOTE]
+> The model is intentionally **strong but not overcomplicated**. The project value lives in the full pipeline and robust input handling, not in stacking a bigger backbone.
+
+---
+
+## 📷 Photo-of-Screen Pipeline
+
+The signature feature: you can hand the demo a real-world photo, not just a screenshot.
+
+```mermaid
+flowchart LR
+    A["📱 Phone photo<br/>of a screen"] --> B["Mobile SAM<br/>screen segmentation"]
+    B -->|"found"| D["Perspective<br/>correction<br/>(homography)"]
+    B -->|"low confidence"| C["CV fallbacks:<br/>brightness · Otsu · Canny"]
+    C --> D
+    D --> E["Letterbox 224×224<br/>(same as training)"]
+    E --> F["ResNet-50<br/>classifier"]
+    F --> G["✅ Top-3 + confidence"]
+```
+
+| Step | Method | Why this design |
+|---|---|---|
+| 1️⃣ Detect the screen | **Mobile SAM** semantic segmentation (primary) | Robust to glare, lighting, weird angles |
+| 2️⃣ Fallback when SAM is unsure | Brightness percentile → Otsu → Canny edge | Classical CV is reliable when neural confidence is low |
+| 3️⃣ Correct perspective | Homography from detected quadrilateral | Turns an angled photo back into a flat rectangle |
+| 4️⃣ Classify | Same `LetterboxResize` → ResNet-50 | Identical preprocessing as training — no distribution shift |
+
+> [!IMPORTANT]
+> This hybrid CV + deep learning design is what turns the project from *"another image classifier"* into a **real end-to-end system**.
+
+---
+
+## 📊 Results
+
+<div align="center">
+
+### 🎯 Headline Numbers
+
+| Metric | Value |
+|:---:|:---:|
 | **Test accuracy** | **99.53%** (1,700 held-out images) |
+| **Best validation accuracy** | **99.65%** (epoch 4, early-stopped) |
+| **Per-class precision / recall** | **98–100%** across all 17 classes |
+| **Convergence** | Saturated in **~4 epochs** |
 
-Per-class accuracy is **98–100%**. Accuracy saturated in just 4 epochs, so training was stopped early — evidence the bottleneck was data quality and geometry, not model capacity. The few misclassifications are between visually similar games (photorealistic shooters, or sandbox titles like Minecraft ↔ Roblox). See `results/classification_report.txt`, `results/confusion_matrix.png`, and `results/training_curves.png`.
+</div>
 
-### Result Visuals
+### 📈 Visual evidence
 
-| Confusion Matrix | Training Curves |
-|---|---|
-| ![Confusion Matrix](results/confusion_matrix.png) | ![Training Curves](results/training_curves.png) |
+<table>
+<tr>
+<td align="center" width="50%">
 
-### What To Notice In The Results
+**Confusion Matrix**
 
-- The model reaches strong validation performance quickly, suggesting that the
-  dataset quality and preprocessing choices are doing real work.
-- Errors are rare and mostly happen between visually similar games.
-- The project is strong not only because of the final accuracy number, but
-  because the system also supports the harder photo-of-screen scenario.
+![Confusion Matrix](results/confusion_matrix.png)
 
----
+<sub>Errors are rare and concentrated between visually similar games (photorealistic shooters, sandbox titles).</sub>
 
-# 🚀 Getting Started
+</td>
+<td align="center" width="50%">
 
-## Project Structure
+**Training Curves**
+
+![Training Curves](results/training_curves.png)
+
+<sub>Validation accuracy saturates by epoch 4 — evidence that <b>data quality and geometry</b>, not model capacity, were the real bottleneck.</sub>
+
+</td>
+</tr>
+</table>
+
+### 📋 Per-class report (held-out test set, 1,700 images)
 
 <details>
-<summary>Click to expand the file tree</summary>
+<summary><b>Click to expand full classification report</b></summary>
+
+```
+                 precision    recall  f1-score   support
+
+     ARCRaiders       1.00      1.00      1.00       100
+       Among Us       1.00      1.00      1.00       100
+   Apex Legends       0.99      0.98      0.98       100
+ CounterStrike2       1.00      1.00      1.00       100
+       Fortnite       1.00      0.99      0.99       100
+  Forza Horizon       1.00      1.00      1.00       100
+      Free Fire       1.00      0.99      0.99       100
+ Genshin Impact       0.99      0.99      0.99       100
+     God of War       0.99      1.00      1.00       100
+LeagueOfLegends       1.00      1.00      1.00       100
+   MarvelRivals       0.99      1.00      1.00       100
+      Minecraft       1.00      0.98      0.99       100
+         Roblox       0.98      0.99      0.99       100
+   RocketLeague       1.00      1.00      1.00       100
+    Subnautica2       1.00      1.00      1.00       100
+       Terraria       0.99      1.00      1.00       100
+       Valorant       0.99      1.00      1.00       100
+
+       accuracy                           1.00      1700
+      macro avg       1.00      1.00      1.00      1700
+   weighted avg       1.00      1.00      1.00      1700
+```
+
+</details>
+
+### 🔍 What to notice
+
+- ✅ The model **reaches strong performance in just 4 epochs** — meaning the dataset and preprocessing choices are doing real work.
+- ✅ Errors are **rare and explainable** — they sit between games that genuinely look alike (photorealistic shooters, sandbox titles like Minecraft ↔ Roblox).
+- ✅ The project is strong not only because of the final accuracy number, but because the **same model also supports the harder photo-of-screen scenario** through the hybrid CV pipeline.
+
+---
+
+## 🚀 Live Demo
+
+The demo is a Gradio interface with **two modes**, both backed by the same trained model and the same letterbox geometry as training.
+
+<table>
+<tr>
+<td valign="top" width="50%">
+
+### 🖼️ Screenshot Mode
+
+1. Upload a game frame
+2. Get **Top-3 predictions** with confidence bars
+3. The Top-1 class is shown as a highlighted card
+
+Best for: showing baseline accuracy and clean classification quickly.
+
+</td>
+<td valign="top" width="50%">
+
+### 📷 Photo of Screen Mode
+
+1. The webcam auto-starts
+2. Snap a photo of a monitor or phone screen
+3. The system **detects the screen** (green corners), **corrects perspective**, then classifies
+4. Top-3 with confidence is shown alongside the corrected preview
+
+Best for: showing real-world robustness — the project's signature moment.
+
+</td>
+</tr>
+</table>
+
+![Demo](assets/demo.png)
+
+<sub><i>Above: a phone photo of a Fortnite screen, auto-detected and rectified, then classified as <b>Fortnite (99.5%)</b>.</i></sub>
+
+### 🎬 Run it locally
+
+```bash
+python demo/app.py
+```
+
+Opens at **<http://localhost:7860>** and prints a public `*.gradio.live` link you can share with anyone for a week.
+
+> [!TIP]
+> The repo ships a trained `checkpoints/best_model.pth`, so the demo runs without any training or data download.
+
+---
+
+## 🛠️ Quickstart
+
+### 1. Install
+
+```bash
+pip install -r requirements.txt
+
+# For photo-of-screen mode (Mobile SAM screen segmentation):
+pip install git+https://github.com/ChaoningZhang/MobileSAM.git
+```
+
+> [!WARNING]
+> **GPU note:** on RTX 50-series (Blackwell, sm_120), install the **cu128** torch build (nightly). cu121 / cu124 builds lack kernels for that architecture — `cuda.is_available()` returns True but kernels error at runtime.
+
+### 2. Run the demo
+
+```bash
+python demo/app.py
+```
+
+### 3. Train & evaluate (optional)
+
+Set `DATA_SOURCE=local` to use the 17-class merged set (otherwise it falls back to the online HF 10-class baseline).
+
+<table>
+<tr>
+<td valign="top" width="50%">
+
+**macOS / Linux (bash / zsh)**
+
+```bash
+export DATA_SOURCE=local
+python model/train.py
+python model/eval.py
+```
+
+</td>
+<td valign="top" width="50%">
+
+**Windows (PowerShell)**
+
+```powershell
+$env:DATA_SOURCE='local'; python model/train.py
+$env:DATA_SOURCE='local'; python model/eval.py
+```
+
+</td>
+</tr>
+</table>
+
+Outputs land in:
+- `checkpoints/best_model.pth` — best validation checkpoint
+- `results/training_history.json` — per-epoch loss / accuracy
+- `results/classification_report.txt` · `confusion_matrix.png` · `training_curves.png`
+
+---
+
+## 📂 Project Structure
+
+<details>
+<summary><b>Click to expand the file tree</b></summary>
 
 ```
 .
@@ -250,100 +631,116 @@ Per-class accuracy is **98–100%**. Accuracy saturated in just 4 epochs, so tra
 
 </details>
 
-## Prerequisites
+---
 
-- Python 3.13
-- An NVIDIA GPU is recommended for training (CPU works for the demo, just slower).
-
-## Installation
-
-```bash
-pip install -r requirements.txt
-
-# For photo-of-screen mode (Mobile SAM screen segmentation):
-pip install git+https://github.com/ChaoningZhang/MobileSAM.git
-```
-
-> **GPU note:** on RTX 50-series (Blackwell, sm_120), install the **cu128** torch build (nightly). cu121/cu124 builds lack kernels for that architecture — `cuda.is_available()` returns True but kernels error at runtime.
-
-The repo ships a trained `best_model.pth`, so the demo runs without any training or data download.
-
-## Usage
-
-**Run the demo**
-
-```bash
-python demo/app.py
-```
-Opens at **http://localhost:7860** and prints a public `*.gradio.live` link. Toggle between **Screenshot** and **Photo of Screen** modes (the latter auto-starts the webcam).
-
-**Run the demo on macOS / zsh**
-
-```bash
-python demo/app.py
-```
-
-**Train & evaluate** — set `DATA_SOURCE=local` to use the 17-class merged set (otherwise it falls back to the online HF 10-class baseline):
-
-```powershell
-$env:DATA_SOURCE='local'; python model/train.py   # → checkpoints/best_model.pth + results/training_history.json
-$env:DATA_SOURCE='local'; python model/eval.py    # → report + confusion matrix + curves
-```
-
-```bash
-export DATA_SOURCE=local
-python model/train.py
-python model/eval.py
-```
-
-## Live Demo Flow
-
-For presentations, the most reliable order is:
-
-1. Start with **Screenshot** mode using a prepared strong example.
-2. Switch to **Photo of Screen** mode for the more realistic case.
-3. Point out the screen detection, perspective correction, and final Top-3
-   predictions.
-4. Keep a backup image ready in case webcam permission or lighting becomes an
-   issue.
+## 🔁 Reproducibility
 
 <details>
-<summary>Rebuild the dataset from scratch</summary>
+<summary><b>Rebuild the dataset from scratch</b></summary>
 
 ```bash
-python data/export_hf_dataset.py --output-dir dataset_hf   # classic 10 classes
-python data/collect_youtube_to_1000.py                     # self-collected 10 classes
-python data/build_combined_dataset.py                      # merge → 17 classes
-```
+# 1. Classic 10 classes from HuggingFace
+python data/export_hf_dataset.py --output-dir dataset_hf
 
-Full data-collection methodology and options are in **[DATA_COLLECTION.md](DATA_COLLECTION.md)**; per-stage details are in the folder READMEs.
+# 2. Self-collected 10 classes from YouTube
+#    (first: winget install denoland.deno  — see DATA_COLLECTION.md)
+python data/collect_youtube_to_1000.py
+python data/clean_data.py --dataset-dir dataset_youtube_hq --apply
+python data/report_data.py --dataset-dir dataset_youtube_hq
+
+# 3. Merge into the 17-class training set
+python data/build_combined_dataset.py
+```
 
 </details>
 
+<details>
+<summary><b>Train and evaluate end-to-end</b></summary>
+
+```bash
+export DATA_SOURCE=local
+python model/train.py     # → checkpoints/best_model.pth + results/training_history.json
+python model/eval.py      # → classification_report + confusion_matrix + training_curves
+python demo/app.py        # → open http://localhost:7860
+```
+
+</details>
+
+Full methodology and options are in **[DATA_COLLECTION.md](DATA_COLLECTION.md)**; per-stage details are in the folder READMEs (`data/README.md`, `model/README.md`, `demo/README.md`).
+
 ---
 
-# 👥 Project Info
+## 👥 Team & Contributions
 
-## Contributing
+<table>
+<tr>
+<td align="center" width="25%">
+<b>Yizhuo Li</b><br/>
+<sub>Model & Training</sub><br/><br/>
+ResNet-50 fine-tuning, training loop, evaluation, results.
+</td>
+<td align="center" width="25%">
+<b>Elaine Wang</b><br/>
+<sub>Demo & Interface</sub><br/><br/>
+Gradio UI, photo-of-screen mode, screen-detection UX.
+</td>
+<td align="center" width="25%">
+<b>Cecilia Hua</b><br/>
+<sub>Data Pipeline</sub><br/><br/>
+YouTube collection, cleaning, balancing, methodology docs.
+</td>
+<td align="center" width="25%">
+<b>Cassie Li</b><br/>
+<sub>Integration & Presentation</sub><br/><br/>
+Project packaging, integration, final repository, presentation flow.
+</td>
+</tr>
+</table>
 
-Contributions are welcome — see **[CONTRIBUTING.md](CONTRIBUTING.md)** for development setup, project conventions (e.g. keeping the letterbox geometry in sync across training/eval/demo), and the pull-request workflow.
+See **[CONTRIBUTING.md](CONTRIBUTING.md)** for development setup and project conventions (e.g. keeping the letterbox geometry in sync across training, evaluation, and the demo).
 
-## Authors
+---
 
-| Name | Primary contribution |
-|------|----------------------|
-| Yizhuo Li | Model training and evaluation |
-| Elaine Wang | Demo and interface flow |
-| Cecilia Hua | Data pipeline and dataset work |
-| Cassie Li | Integration, project packaging, and presentation |
+## ⚠️ Limitations
 
-## Acknowledgments
+We tried to be honest about where the system can still struggle:
 
-- [Bingsu/Gameplay_Images](https://huggingface.co/datasets/Bingsu/Gameplay_Images) — public baseline dataset.
+- 🌗 **Live screen detection depends on lighting and framing.** Heavy glare, very oblique angles, or a screen that takes up only a small fraction of the photo can defeat Mobile SAM and the CV fallbacks.
+- 🎮 **Visually similar games remain harder.** Photorealistic shooters and sandbox games (Minecraft ↔ Roblox) are the most common confusions in the few errors we have.
+- 📐 **The dataset is balanced and curated**, but it is sampled from publicly available gameplay — it does not yet include genuinely adversarial real-world photos at scale.
+- 🧪 **Photo-of-screen accuracy is reported qualitatively** through the demo, not via a held-out quantitative photo benchmark.
+
+---
+
+## 🔮 Future Work
+
+- 📷 Build a quantitative photo-of-screen evaluation set with real angled / glare / blur conditions.
+- ⏱️ Latency and on-device optimization (e.g. ONNX export, mobile deployment).
+- ➕ Expand the class set with more genres (rhythm, indie, simulation).
+- 🎓 Optional **teacher → student knowledge distillation** as a future extension to make inference even faster while preserving accuracy.
+- 🌐 Cleaner public-facing front-end and a hosted demo with a stable URL.
+
+---
+
+## 🙌 Acknowledgments
+
+- [`Bingsu/Gameplay_Images`](https://huggingface.co/datasets/Bingsu/Gameplay_Images) — public baseline dataset.
 - [MobileSAM](https://github.com/ChaoningZhang/MobileSAM) — lightweight Segment Anything used for screen detection.
 - [yt-dlp](https://github.com/yt-dlp/yt-dlp) — YouTube downloading for data collection.
 - Built with [PyTorch](https://pytorch.org/) and [Gradio](https://www.gradio.app/).
 
-## License
+---
 
-Released under the [MIT License](LICENSE). Data comes from public sources (HuggingFace + YouTube gameplay) and is used for study and research only; all game imagery belongs to its respective publishers.
+## 📜 License
+
+Released under the **[MIT License](LICENSE)**. Data comes from public sources (HuggingFace + YouTube gameplay) and is used for study and research only; all game imagery belongs to its respective publishers.
+
+---
+
+<div align="center">
+
+### 🎮 Built end-to-end — from real gameplay frames to a real-world photo demo.
+
+<sub>Machine Learning 2 · Final Project · 2026</sub>
+
+</div>
