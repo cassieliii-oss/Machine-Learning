@@ -50,7 +50,6 @@ by **Yizhuo Li** · **Elaine Wang** · **Cecilia Hua** · **Cassie Li**
 - [Data Pipeline](#-data-pipeline)
 - [Key Design: Letterbox Geometry](#-the-key-design-letterbox-geometry)
 - [Model & Training](#-model--training-strategy)
-- [Photo-of-Screen Pipeline](#-photo-of-screen-pipeline)
 
 </td>
 <td valign="top" width="33%">
@@ -231,6 +230,31 @@ flowchart LR
     F --> G["Top-3<br/>+ confidence"]
 ```
 
+### 📷 Photo-of-Screen Pipeline
+
+The signature feature: you can hand the demo a real-world photo, not just a screenshot.
+
+```mermaid
+flowchart LR
+    A["📱 Phone photo<br/>of a screen"] --> B["Mobile SAM<br/>screen segmentation"]
+    B -->|"found"| D["Perspective<br/>correction<br/>(homography)"]
+    B -->|"low confidence"| C["CV fallbacks:<br/>brightness · Otsu · Canny"]
+    C --> D
+    D --> E["Letterbox 224×224<br/>(same as training)"]
+    E --> F["ResNet-50<br/>classifier"]
+    F --> G["✅ Top-3 + confidence"]
+```
+
+| Step | Method | Why this design |
+|---|---|---|
+| 1️⃣ Detect the screen | **Mobile SAM** semantic segmentation (primary) | Robust to glare, lighting, weird angles |
+| 2️⃣ Fallback when SAM is unsure | Brightness percentile → Otsu → Canny edge | Classical CV is reliable when neural confidence is low |
+| 3️⃣ Correct perspective | Homography from detected quadrilateral | Turns an angled photo back into a flat rectangle |
+| 4️⃣ Classify | Same `LetterboxResize` → ResNet-50 | Identical preprocessing as training — no distribution shift |
+
+> [!IMPORTANT]
+> This hybrid CV + deep learning design is what turns the project from *"another image classifier"* into a **real end-to-end system**.
+
 ### 🧩 Modules
 
 | Module | Responsibility | Key tech |
@@ -374,33 +398,6 @@ These mimic tilt, blur, glare, and occlusion at training time.
 
 > [!NOTE]
 > The model is intentionally **strong but not overcomplicated**. The project value lives in the full pipeline and robust input handling, not in stacking a bigger backbone.
-
----
-
-## 📷 Photo-of-Screen Pipeline
-
-The signature feature: you can hand the demo a real-world photo, not just a screenshot.
-
-```mermaid
-flowchart LR
-    A["📱 Phone photo<br/>of a screen"] --> B["Mobile SAM<br/>screen segmentation"]
-    B -->|"found"| D["Perspective<br/>correction<br/>(homography)"]
-    B -->|"low confidence"| C["CV fallbacks:<br/>brightness · Otsu · Canny"]
-    C --> D
-    D --> E["Letterbox 224×224<br/>(same as training)"]
-    E --> F["ResNet-50<br/>classifier"]
-    F --> G["✅ Top-3 + confidence"]
-```
-
-| Step | Method | Why this design |
-|---|---|---|
-| 1️⃣ Detect the screen | **Mobile SAM** semantic segmentation (primary) | Robust to glare, lighting, weird angles |
-| 2️⃣ Fallback when SAM is unsure | Brightness percentile → Otsu → Canny edge | Classical CV is reliable when neural confidence is low |
-| 3️⃣ Correct perspective | Homography from detected quadrilateral | Turns an angled photo back into a flat rectangle |
-| 4️⃣ Classify | Same `LetterboxResize` → ResNet-50 | Identical preprocessing as training — no distribution shift |
-
-> [!IMPORTANT]
-> This hybrid CV + deep learning design is what turns the project from *"another image classifier"* into a **real end-to-end system**.
 
 ---
 
@@ -716,7 +713,7 @@ We tried to be honest about where the system can still struggle:
 
 - 📷 Build a quantitative photo-of-screen evaluation set with real angled / glare / blur conditions.
 - ⏱️ Latency and on-device optimization (e.g. ONNX export, mobile deployment).
-- ➕ Expand the class set with more genres (rhythm, indie, simulation).
+- ➕ **Open-set recognition** — extending beyond a fixed 17-class set using a zero-shot vision-language model (e.g. CLIP) so the system can recognize and reject unknown games.
 - 🎓 Optional **teacher → student knowledge distillation** as a future extension to make inference even faster while preserving accuracy.
 - 🌐 Cleaner public-facing front-end and a hosted demo with a stable URL.
 
